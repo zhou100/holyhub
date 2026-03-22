@@ -1,0 +1,38 @@
+import { Link } from 'react-router-dom'
+
+function gradient(id) {
+  const hue = (id * 37) % 360
+  return `linear-gradient(135deg, hsl(${hue},60%,45%), hsl(${(hue + 40) % 360},50%,35%))`
+}
+
+function Stars({ rating }) {
+  if (rating == null) return <span className="stars">—</span>
+  const full = Math.round(rating)
+  return <span className="stars">{'★'.repeat(full)}{'☆'.repeat(5 - full)}</span>
+}
+
+export default function ChurchCard({ church }) {
+  return (
+    <Link to={`/church/${church.id}`} className="church-card">
+      <div className="card-photo" style={{ background: gradient(church.id) }}>
+        ⛪
+      </div>
+      <div className="card-body">
+        <h3>{church.name}</h3>
+        <p className="card-denom">{church.denomination || 'Church'}</p>
+        <div className="card-meta">
+          <Stars rating={church.avg_rating} />
+          <span className="review-count">
+            {church.avg_rating != null ? church.avg_rating.toFixed(1) : '—'}
+            {' '}({church.review_count} {church.review_count === 1 ? 'review' : 'reviews'})
+          </span>
+        </div>
+        {church.tags?.length > 0 && (
+          <div className="tag-list">
+            {church.tags.map(t => <span key={t} className="tag">{t}</span>)}
+          </div>
+        )}
+      </div>
+    </Link>
+  )
+}

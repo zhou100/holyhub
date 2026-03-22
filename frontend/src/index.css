@@ -1,0 +1,272 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  font-family: Inter, system-ui, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #1a1a2e;
+  background-color: #f5f5f0;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body { margin: 0; min-height: 100vh; }
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  transition: opacity 0.15s, transform 0.1s;
+}
+button:hover { opacity: 0.88; }
+button:active { transform: scale(0.97); }
+button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ── Search page ─────────────────────────── */
+.search-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+.search-page header { margin-bottom: 2rem; }
+.search-page header h1 { margin: 0 0 0.25rem; font-size: 2rem; }
+.search-page header p { margin: 0; color: #666; }
+
+.search-form { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
+.search-form input {
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+  flex: 1 1 140px;
+}
+.search-form input:focus { outline: none; border-color: #6c63ff; }
+.search-form button.search-btn {
+  padding: 0.6rem 1.4rem;
+  background: #6c63ff;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.demo-hint {
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  color: #888;
+}
+.demo-hint button {
+  background: none;
+  color: #6c63ff;
+  font-size: 0.82rem;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.church-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.empty-state {
+  margin-top: 3rem;
+  text-align: center;
+  color: #888;
+}
+
+/* ── ChurchCard ──────────────────────────── */
+.church-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.church-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  transform: translateY(-2px);
+}
+.card-photo {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+.card-body { padding: 0.9rem 1rem 1rem; }
+.card-body h3 { margin: 0 0 0.2rem; font-size: 1rem; font-weight: 700; }
+.card-denom { font-size: 0.8rem; color: #777; margin: 0 0 0.5rem; }
+.card-meta { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+.stars { color: #f59e0b; letter-spacing: 1px; }
+.review-count { color: #888; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.6rem; }
+.tag {
+  background: #eef2ff;
+  color: #6c63ff;
+  border-radius: 20px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* ── ChurchDetail page ───────────────────── */
+.detail-page { max-width: 720px; margin: 0 auto; padding: 1.5rem; }
+.detail-hero {
+  height: 160px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  margin-bottom: 1.25rem;
+}
+.detail-header h1 { margin: 0 0 0.2rem; font-size: 1.5rem; }
+.detail-header .denom { color: #777; font-size: 0.9rem; margin: 0 0 0.3rem; }
+.detail-header .address { color: #888; font-size: 0.85rem; margin: 0 0 0.3rem; }
+.detail-header .service-times { color: #888; font-size: 0.85rem; margin: 0 0 0.75rem; }
+.detail-header .meta { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.avg-rating { font-size: 1.1rem; font-weight: 700; }
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: #6c63ff;
+  font-size: 0.9rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.back-link:hover { opacity: 0.75; }
+
+.section-title { font-size: 1rem; font-weight: 700; margin: 1.5rem 0 0.75rem; color: #333; }
+
+/* ── DimensionBars ───────────────────────── */
+.dimension-bars { display: flex; flex-direction: column; gap: 0.6rem; }
+.dim-row { display: flex; align-items: center; gap: 0.75rem; }
+.dim-label { width: 140px; font-size: 0.82rem; color: #444; flex-shrink: 0; line-height: 1.3; }
+.dim-sublabel { display: block; font-size: 0.7rem; color: #999; }
+.dim-track {
+  flex: 1;
+  height: 10px;
+  background: #eee;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.dim-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #6c63ff, #a78bfa);
+  width: 0;
+  animation: fillBar 0.6s ease-out forwards;
+}
+.dim-fill.no-data { background: #ddd; animation: none; width: 100%; opacity: 0.4; }
+.dim-value { font-size: 0.82rem; font-weight: 600; width: 28px; text-align: right; color: #444; }
+
+@keyframes fillBar {
+  from { width: 0; }
+  to   { width: var(--pct); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dim-fill { animation: none; width: var(--pct); }
+}
+
+/* ── Reviews list ────────────────────────── */
+.review-card {
+  background: white;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.review-card .review-stars { color: #f59e0b; font-size: 0.9rem; margin-bottom: 0.25rem; }
+.review-card .review-comment { margin: 0 0 0.5rem; font-size: 0.9rem; }
+.review-card .review-date { font-size: 0.75rem; color: #aaa; }
+.review-count-badge {
+  display: inline-block;
+  animation: countBump 0.4s ease-out;
+}
+@keyframes countBump {
+  0%   { transform: scale(1.0); }
+  40%  { transform: scale(1.35); color: #6c63ff; }
+  100% { transform: scale(1.0); }
+}
+
+/* ── ReviewForm ──────────────────────────── */
+.review-form {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+.review-form h3 { margin: 0 0 1rem; font-size: 1rem; }
+.form-row { margin-bottom: 0.9rem; }
+.form-row label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  color: #444;
+}
+.form-row label .optional { font-weight: 400; color: #aaa; margin-left: 0.25rem; }
+.form-row textarea {
+  width: 100%;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  padding: 0.6rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 80px;
+}
+.form-row textarea:focus { outline: none; border-color: #6c63ff; }
+.dim-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.submit-btn {
+  padding: 0.7rem 1.5rem;
+  background: #6c63ff;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+.submit-success {
+  color: #16a34a;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+}
+.submit-error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+/* ── StarInput ───────────────────────────── */
+.star-input { display: flex; gap: 0.15rem; }
+.star-input button {
+  background: none;
+  font-size: 1.3rem;
+  padding: 0.1rem;
+  line-height: 1;
+  border-radius: 2px;
+  transition: transform 0.1s;
+}
+.star-input button:hover { transform: scale(1.2); }
+
+/* ── Loading / error states ──────────────── */
+.loading { text-align: center; padding: 3rem; color: #888; }
+.error-msg { text-align: center; padding: 2rem; color: #dc2626; }
