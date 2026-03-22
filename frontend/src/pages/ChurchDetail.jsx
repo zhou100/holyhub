@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import DimensionBars from '../components/DimensionBars'
 import ReviewForm from '../components/ReviewForm'
+import ChurchCard from '../components/ChurchCard'
 
 const API = ''
 
@@ -38,6 +39,8 @@ export default function ChurchDetail() {
   const [reviewsError, setReviewsError] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reviewCount, setReviewCount] = useState(0)
+  const [similarChurches, setSimilarChurches] = useState(null)
+  const [similarError, setSimilarError] = useState(null)
 
   async function fetchChurch() {
     try {
@@ -46,6 +49,16 @@ export default function ChurchDetail() {
       setChurch(await res.json())
     } catch (e) {
       setChurchError(e.message)
+    }
+  }
+
+  async function fetchSimilar() {
+    try {
+      const res = await fetch(`${API}/api/churches/${id}/similar`)
+      if (!res.ok) throw new Error('Failed to load')
+      setSimilarChurches(await res.json())
+    } catch (e) {
+      setSimilarError(e.message)
     }
   }
 
@@ -63,7 +76,7 @@ export default function ChurchDetail() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.allSettled([fetchChurch(), fetchReviews()]).then(() => setLoading(false))
+    Promise.allSettled([fetchChurch(), fetchReviews(), fetchSimilar()]).then(() => setLoading(false))
   }, [id])
 
   async function handleReviewSubmitted() {
@@ -124,6 +137,20 @@ export default function ChurchDetail() {
           ? <p className="empty-state">No reviews yet — be the first!</p>
           : reviewData?.reviews.map(r => <ReviewCard key={r.id} review={r} />)
       }
+
+      {!churchError && church && similarChurches !== null && similarChurches.length > 0 && (
+        <>
+          <h2 className="section-title">Similar churches</h2>
+          {similarError
+            ? <p className="error-msg">{similarError}</p>
+            : (
+              <div className="similar-churches-grid">
+                {similarChurches.map(c => <ChurchCard key={c.id} church={c} />)}
+              </div>
+            )
+          }
+        </>
+      )}
 
       {!churchError && church && (
         <>

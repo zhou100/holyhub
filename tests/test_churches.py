@@ -77,3 +77,19 @@ def test_church_detail_dimensions_rounded(client):
     dims = r.json()["dimensions"]
     assert dims["worship_energy"] == 5.0
     assert dims["community_warmth"] == 4.5
+
+
+def test_similar_churches_returns_list(client):
+    r = client.get("/api/churches/1/similar")
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
+
+
+def test_similar_churches_excludes_self(client):
+    r = client.get("/api/churches/1/similar")
+    assert 1 not in [c["id"] for c in r.json()]
+
+
+def test_similar_churches_404_for_missing(client):
+    r = client.get("/api/churches/9999/similar")
+    assert r.status_code == 404

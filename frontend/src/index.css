@@ -270,3 +270,47 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 /* ── Loading / error states ──────────────── */
 .loading { text-align: center; padding: 3rem; color: #888; }
 .error-msg { text-align: center; padding: 2rem; color: #dc2626; }
+
+/* ── Tag filter bar ──────────────────────── */
+.tag-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0.25rem;
+  align-items: center;
+}
+.tag-filter-pill {
+  background: none;
+  border: 1.5px solid #c7d2fe;
+  color: #6c63ff;
+  border-radius: 20px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tag-filter-pill.tag-active {
+  background: #6c63ff;
+  color: white;
+  border-color: #6c63ff;
+}
+.tag-clear {
+  background: none;
+  color: #aaa;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  border: 1.5px solid #ddd;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tag-clear:hover { color: #dc2626; border-color: #dc2626; }
+
+/* ── Similar churches ────────────────────── */
+.similar-churches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}

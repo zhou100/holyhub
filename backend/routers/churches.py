@@ -60,6 +60,58 @@ def list_churches(city: str = "", state: str = "", db: Database = Depends(get_db
     return [_row_to_church(row) for row in rows]
 
 
+@router.get("/churches/{church_id}/similar")
+def get_similar_churches(church_id: int, db: Database = Depends(get_db)):
+    target = db.execute_query(_DIM_QUERY + "WHERE c.church_id = ? GROUP BY c.church_id", (church_id,))
+    if not target:
+        raise HTTPException(status_code=404, detail="Church not found")
+    query = """
+        SELECT
+            c.church_id AS id, c.name, c.address, c.city, c.state,
+            c.denomination, c.service_times,
+            ROUND(AVG(r.rating), 1)               AS avg_rating,
+            COUNT(r.review_id)                    AS review_count,
+            AVG(r.worship_energy)                 AS avg_worship_energy,
+            AVG(r.community_warmth)               AS avg_community_warmth,
+            AVG(r.sermon_depth)                   AS avg_sermon_depth,
+            AVG(r.childrens_programs)             AS avg_childrens_programs,
+            AVG(r.theological_openness)           AS avg_theological_openness,
+            AVG(r.facilities)                     AS avg_facilities,
+            (
+                (COALESCE(AVG(r.worship_energy),       0) - COALESCE(t.we,  0)) *
+                (COALESCE(AVG(r.worship_energy),       0) - COALESCE(t.we,  0))
+              + (COALESCE(AVG(r.community_warmth),     0) - COALESCE(t.cw,  0)) *
+                (COALESCE(AVG(r.community_warmth),     0) - COALESCE(t.cw,  0))
+              + (COALESCE(AVG(r.sermon_depth),         0) - COALESCE(t.sd,  0)) *
+                (COALESCE(AVG(r.sermon_depth),         0) - COALESCE(t.sd,  0))
+              + (COALESCE(AVG(r.childrens_programs),   0) - COALESCE(t.cp,  0)) *
+                (COALESCE(AVG(r.childrens_programs),   0) - COALESCE(t.cp,  0))
+              + (COALESCE(AVG(r.theological_openness), 0) - COALESCE(t.to_, 0)) *
+                (COALESCE(AVG(r.theological_openness), 0) - COALESCE(t.to_, 0))
+              + (COALESCE(AVG(r.facilities),           0) - COALESCE(t.fac, 0)) *
+                (COALESCE(AVG(r.facilities),           0) - COALESCE(t.fac, 0))
+            ) AS dist_sq
+        FROM Churches c
+        JOIN Reviews r ON c.church_id = r.church_id
+        JOIN (
+            SELECT
+                COALESCE(AVG(worship_energy),       0) AS we,
+                COALESCE(AVG(community_warmth),     0) AS cw,
+                COALESCE(AVG(sermon_depth),         0) AS sd,
+                COALESCE(AVG(childrens_programs),   0) AS cp,
+                COALESCE(AVG(theological_openness), 0) AS to_,
+                COALESCE(AVG(facilities),           0) AS fac
+            FROM Reviews WHERE church_id = ?
+        ) t
+        WHERE c.church_id != ?
+        GROUP BY c.church_id
+        ORDER BY dist_sq ASC
+        LIMIT 3
+    """
+    rows = db.execute_query(query, (church_id, church_id))
+    return [_row_to_church(row) for row in rows]
+
+
 @router.get("/churches/{church_id}")
 def get_church(church_id: int, db: Database = Depends(get_db)):
     query = _DIM_QUERY + "WHERE c.church_id = ? GROUP BY c.church_id"

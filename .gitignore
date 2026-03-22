@@ -50,3 +50,6 @@ venv.bak/
 htmlcov/
 .pytest_cache/
 .gstack/
+
+# Claude / gstack tooling
+.claude/
