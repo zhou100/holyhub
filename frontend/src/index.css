@@ -263,10 +263,15 @@ button:focus-visible { outline: 2px solid #6c63ff; outline-offset: 2px; }
 .star-input button {
   background: none;
   font-size: 1.3rem;
-  padding: 0.1rem;
+  padding: 0.6rem 0.35rem;
   line-height: 1;
-  border-radius: 2px;
+  border-radius: 4px;
   transition: transform 0.1s;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .star-input button:hover { transform: scale(1.2); }
 
