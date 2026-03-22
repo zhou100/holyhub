@@ -1,1 +1,8 @@
-
+fastapi
+uvicorn[standard]
+requests
+rapidfuzz
+reverse_geocoder
+tqdm
+pytest
+httpx

@@ -54,9 +54,18 @@ def _row_to_church(row, include_dims: bool = False) -> dict:
 
 
 @router.get("/churches")
-def list_churches(city: str = "", state: str = "", db: Database = Depends(get_db)):
-    query = _DIM_QUERY + "WHERE c.city = ? AND c.state = ? GROUP BY c.church_id"
-    rows = db.execute_query(query, (city, state))
+def list_churches(
+    city: str = "",
+    state: str = "",
+    zip_code: str = "",
+    db: Database = Depends(get_db),
+):
+    if zip_code:
+        query = _DIM_QUERY + "WHERE c.zip_code = ? GROUP BY c.church_id"
+        rows = db.execute_query(query, (zip_code,))
+    else:
+        query = _DIM_QUERY + "WHERE c.city = ? AND c.state = ? GROUP BY c.church_id"
+        rows = db.execute_query(query, (city, state))
     return [_row_to_church(row) for row in rows]
 
 

@@ -128,6 +128,110 @@ Run with: `pytest tests/ -v` from project root
 
 ---
 
+## Phase 3: Real Church Data Pipeline (next big piece)
+
+**Goal:** Replace seeded fake data with every actual church in the US — ~380k records.
+
+**Why:** The app is useless at scale without real church listings. Reviews mean nothing if the church isn't in the database. Multi-city support (Phase 2 backlog) depends on this.
+
+**How to apply:** Before building this, decide whether to run it as a one-time import or a recurring sync. One-time is fine for launch; recurring keeps data fresh.
+
+---
+
+### Data sources (all free)
+
+| Source | Coverage | Format | Cost |
+|--------|----------|--------|------|
+| OpenStreetMap Overpass API | ~200–300k US churches with lat/lon, name, denomination | GeoJSON/XML via HTTP | Free |
+| IRS Tax-Exempt Orgs (Pub 78) | ~450k religious 501(c)(3)s, name + address + EIN | CSV bulk download | Free |
+| Nominatim geocoder | Converts IRS addresses → lat/lon | REST API, 1 req/sec | Free |
+
+*Google Places would give better data quality but costs ~$6,500 for 380k churches. Not worth it.*
+
+---
+
+### Schema changes needed
+
+Add columns to `Churches` table:
+
+```sql
+ALTER TABLE Churches ADD COLUMN latitude  REAL;
+ALTER TABLE Churches ADD COLUMN longitude REAL;
+ALTER TABLE Churches ADD COLUMN website   TEXT;
+ALTER TABLE Churches ADD COLUMN phone     TEXT;
+ALTER TABLE Churches ADD COLUMN zip_code  TEXT;
+ALTER TABLE Churches ADD COLUMN source    TEXT;   -- 'osm' | 'irs' | 'manual'
+ALTER TABLE Churches ADD COLUMN external_id TEXT; -- OSM node ID or IRS EIN
+```
+
+---
+
+### Implementation plan
+
+**Step A — OSM scraper** (`backend/scrapers/osm_scraper.py`)
+
+- Tile the continental US into a ~15×10 grid of bounding boxes (150 tiles)
+- For each tile: query Overpass API for `amenity=place_of_worship`
+
+  ```overpassql
+  [out:json];
+  node["amenity"="place_of_worship"]({south},{west},{north},{east});
+  out body;
+  ```
+
+- Parse each node: `name`, `addr:street`, `addr:city`, `addr:state`, `addr:postcode`, `denomination`, `religion`, lat/lon
+- Write to a staging CSV, then bulk-insert into `Churches`
+- Rate limit: 1 request per 2 seconds to be polite. ~150 tiles × 2s = 5 minutes total.
+
+**Step B — IRS importer** (`backend/scrapers/irs_importer.py`)
+
+- Download IRS Publication 78 data from `apps.irs.gov/pub/epostcard/data-download-pub78.zip`
+- Filter rows where `NTEE_CD` starts with `X` (religion) or `SUBSECTION_CODE = 03` (religious)
+- Dedup against existing OSM records by name+city fuzzy match (or EIN if we later find EIN→address mapping)
+- Geocode new-only records via Nominatim: `nominatim.openstreetmap.org/search?q={address}&format=json`
+  - Rate limit: 1 req/sec → ~1 hour for 3,600 records in a batch; run overnight for full set
+- Insert non-duplicate records into `Churches` with `source='irs'`
+
+**Step C — Deduplication** (`backend/scrapers/dedup.py`)
+
+- After both imports: find pairs with Levenshtein distance < 3 on name AND same city
+- Keep OSM record (has lat/lon), merge in IRS EIN as `external_id`
+- Flag duplicates in a `duplicates.csv` for manual review
+
+**Step D — CLI runner** (`backend/scrapers/run_pipeline.py`)
+
+```bash
+python -m backend.scrapers.run_pipeline --source osm    # ~5 min
+python -m backend.scrapers.run_pipeline --source irs    # ~hours (geocoding)
+python -m backend.scrapers.run_pipeline --source dedup  # ~1 min
+python -m backend.scrapers.run_pipeline --all           # full pipeline
+```
+
+**Step E — Search API update** (`backend/routers/churches.py`)
+
+- Add `GET /api/churches/nearby?lat=&lon=&radius_km=` endpoint for map-based search
+- Keep existing `?city=&state=` search working
+- Add `zip_code` as optional search param
+
+---
+
+### Effort estimate
+
+| Task | Human team | CC+gstack |
+| ---- | ---------- | --------- |
+| Schema migration | 1 hour | 5 min |
+| OSM scraper + tile logic | 4 hours | 15 min |
+| IRS importer + geocoder | 3 hours | 15 min |
+| Deduplication script | 2 hours | 10 min |
+| Search API update | 2 hours | 10 min |
+| **Total** | **~12 hours** | **~55 min** |
+
+**Priority:** P1 — blocks multi-city launch
+**Depends on:** Nothing (can start now)
+**Effort:** M (CC: ~1 hour)
+
+---
+
 ## Phase 2 backlog (post-hackathon)
 
 - [ ] **Tag filter on search results** — Client-side filter by tag chip click. `activeTag` state in Search.jsx filters the already-fetched church array. No API call needed. Effort: S (CC: ~4 min). Depends on: tags showing on cards (in scope).

@@ -9,7 +9,12 @@ CREATE TABLE IF NOT EXISTS Churches (
     denomination TEXT,
     service_times TEXT,
     latitude REAL,
-    longitude REAL
+    longitude REAL,
+    zip_code TEXT,
+    website TEXT,
+    phone TEXT,
+    source TEXT DEFAULT 'manual',
+    external_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS Reviews (
@@ -28,4 +33,7 @@ CREATE TABLE IF NOT EXISTS Reviews (
 );
 
 CREATE INDEX IF NOT EXISTS idx_churches_location ON Churches(city, state);
+CREATE INDEX IF NOT EXISTS idx_churches_zip ON Churches(zip_code);
+CREATE INDEX IF NOT EXISTS idx_churches_latlon ON Churches(latitude, longitude);
+CREATE INDEX IF NOT EXISTS idx_churches_external ON Churches(external_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_church ON Reviews(church_id);
