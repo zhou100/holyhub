@@ -135,8 +135,16 @@ def run(db_path: str = "holyhub.db", force: bool = False, dry_run: bool = False)
                     "UPDATE Churches SET language=?, cultural_background=? WHERE church_id=?",
                     (lang, culture, row["church_id"])
                 )
+        elif force and not dry_run:
+            # In force mode, clear stale tags for rows that no longer match any rule
+            con.execute(
+                "UPDATE Churches SET language=NULL, cultural_background=NULL WHERE church_id=?",
+                (row["church_id"],)
+            )
 
     if not dry_run:
+        # Also strip language='English' — it's the default, not useful as a filter
+        con.execute("UPDATE Churches SET language=NULL WHERE language='English'")
         con.commit()
 
     con.close()
