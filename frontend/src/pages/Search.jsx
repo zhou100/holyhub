@@ -38,6 +38,7 @@ export default function Search() {
   const [error, setError] = useState(null)
   const [selectedTags, setSelectedTags] = useState([])
   const [view, setView] = useState('list') // 'list' | 'map'
+  const [detectedLocation, setDetectedLocation] = useState(null) // { city, state }
   const offsetRef = useRef(0)
 
   async function fetchPage(cityVal, stateVal, offset, append = false) {
@@ -60,6 +61,7 @@ export default function Search() {
     if (!city.trim() || !state.trim()) return
     setSearchParams({ city: city.trim(), state: state.trim() })
     setSelectedTags([])
+    setDetectedLocation(null)
     setLoading(true)
     setError(null)
     offsetRef.current = 0
@@ -83,11 +85,11 @@ export default function Search() {
     }
   }
 
-  // Restore results when navigating back with URL params
+  // On mount: restore from URL params OR auto-detect location from IP
   useEffect(() => {
     const c = searchParams.get('city')
     const s = searchParams.get('state')
-    if (c && s && churches === null) {
+    if (c && s) {
       setCity(c)
       setState(s)
       setLoading(true)
@@ -96,6 +98,26 @@ export default function Search() {
       fetchPage(c, s, 0)
         .then(() => setSelectedTags([]))
         .catch(err => setError(err.message))
+        .finally(() => setLoading(false))
+    } else {
+      // Auto-detect from IP
+      setLoading(true)
+      fetch('https://ipapi.co/json/')
+        .then(r => r.json())
+        .then(data => {
+          const detCity = data.city
+          const detState = data.region_code
+          if (detCity && detState && data.country_code === 'US') {
+            setCity(detCity)
+            setState(detState)
+            setDetectedLocation({ city: detCity, state: detState })
+            setSearchParams({ city: detCity, state: detState })
+            offsetRef.current = 0
+            return fetchPage(detCity, detState, 0)
+              .then(() => setSelectedTags([]))
+          }
+        })
+        .catch(() => {}) // fail silently — user can search manually
         .finally(() => setLoading(false))
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -143,6 +165,12 @@ export default function Search() {
           <button type="button" onClick={tryDemo}>Brooklyn, NY →</button>
         </div>
       </form>
+
+      {detectedLocation && !loading && (
+        <p className="location-detected">
+          📍 Showing churches near <strong>{detectedLocation.city}, {detectedLocation.state}</strong>
+        </p>
+      )}
 
       {error && <p className="error-msg">{error}</p>}
       {loading && <p className="loading">Finding churches…</p>}
@@ -201,7 +229,7 @@ export default function Search() {
               <MapContainer
                 center={[39.5, -98.35]}
                 zoom={4}
-                style={{ height: '100%', width: '100%' }}
+                style={{ height: '500px', width: '100%' }}
               >
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
