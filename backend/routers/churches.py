@@ -14,6 +14,8 @@ _DIM_QUERY = """
         c.state,
         c.denomination,
         c.service_times,
+        c.website,
+        c.phone,
         c.latitude,
         c.longitude,
         ROUND(AVG(r.rating), 1)               AS avg_rating,
@@ -50,6 +52,8 @@ def _row_to_church(row, include_dims: bool = False) -> dict:
         "longitude": row["longitude"],
         "avg_rating": row["avg_rating"],
         "review_count": row["review_count"],
+        "website": row["website"] or None,
+        "phone": row["phone"] or None,
         "tags": compute_tags(dims, row["review_count"] or 0),
     }
     if include_dims:

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
+import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import DimensionBars from '../components/DimensionBars'
 import ReviewForm from '../components/ReviewForm'
 import ChurchCard from '../components/ChurchCard'
@@ -93,11 +94,36 @@ export default function ChurchDetail() {
         ? <p className="error-msg">{churchError}</p>
         : church && (
           <>
-            <div className="detail-hero" style={{ background: gradient(church.id) }}>⛪</div>
+            {church.latitude && church.longitude ? (
+              <div className="detail-map">
+                <MapContainer
+                  center={[church.latitude, church.longitude]}
+                  zoom={15}
+                  style={{ height: '220px', width: '100%' }}
+                  zoomControl={false}
+                  dragging={false}
+                  scrollWheelZoom={false}
+                  doubleClickZoom={false}
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <Marker position={[church.latitude, church.longitude]} />
+                </MapContainer>
+              </div>
+            ) : (
+              <div className="detail-hero" style={{ background: gradient(church.id) }}>⛪</div>
+            )}
+
             <div className="detail-header">
               <h1>{church.name}</h1>
-              <p className="denom">{church.denomination}</p>
-              <p className="address">{church.address}, {church.city}, {church.state}</p>
+              {church.denomination && <p className="denom">{church.denomination}</p>}
+              {(church.address || church.city) && (
+                <p className="address">
+                  {[church.address, church.city, church.state].filter(Boolean).join(', ')}
+                </p>
+              )}
               {church.service_times && (
                 <p className="service-times">🕐 {church.service_times}</p>
               )}
@@ -112,6 +138,31 @@ export default function ChurchDetail() {
                 </span>
                 {church.tags?.map(t => <span key={t} className="tag">{t}</span>)}
               </div>
+
+              {(church.website || church.phone || church.latitude) && (
+                <div className="detail-info-bar">
+                  {church.website && (
+                    <a href={church.website} target="_blank" rel="noopener noreferrer" className="info-link">
+                      🌐 Website
+                    </a>
+                  )}
+                  {church.phone && (
+                    <a href={`tel:${church.phone}`} className="info-link">
+                      📞 {church.phone}
+                    </a>
+                  )}
+                  {church.latitude && church.longitude && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${church.latitude},${church.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="info-link"
+                    >
+                      📍 Get directions
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )
