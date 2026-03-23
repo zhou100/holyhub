@@ -315,6 +315,80 @@ button:focus-visible { outline: 2px solid #6c63ff; outline-offset: 2px; }
 }
 .tag-clear:hover { color: #dc2626; border-color: #dc2626; }
 
+/* ── View toggle (List / Map) ────────────── */
+.view-toggle {
+  display: flex;
+  gap: 0.4rem;
+  margin: 1rem 0 0.5rem;
+}
+.view-btn {
+  background: none;
+  border: 1.5px solid #ddd;
+  color: #555;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.view-btn:hover:not(:disabled) { border-color: #6c63ff; color: #6c63ff; }
+.view-btn.view-active {
+  background: #6c63ff;
+  color: white;
+  border-color: #6c63ff;
+}
+
+/* ── Map container ───────────────────────── */
+.map-container {
+  height: 520px;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+  box-shadow: 0 1px 6px rgba(0,0,0,.1);
+}
+
+/* ── Map popup ───────────────────────────── */
+.map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 160px;
+}
+.map-popup strong { font-size: 0.9rem; }
+.popup-denom { font-size: 0.78rem; color: #777; }
+.popup-rating { font-size: 0.82rem; color: #f59e0b; font-weight: 600; }
+.popup-link {
+  background: #6c63ff;
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  margin-top: 0.25rem;
+  text-align: center;
+}
+
+/* ── Load more ───────────────────────────── */
+.load-more-row {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+.load-more-btn {
+  background: none;
+  border: 1.5px solid #6c63ff;
+  color: #6c63ff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.6rem 2rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+.load-more-btn:hover:not(:disabled) {
+  background: #6c63ff;
+  color: white;
+}
+
 /* ── Similar churches ────────────────────── */
 .similar-churches-grid {
   display: grid;

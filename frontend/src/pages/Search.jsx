@@ -1,17 +1,59 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import L from 'leaflet'
 import ChurchCard from '../components/ChurchCard'
 
 const API = ''
+const PAGE = 50
+
+// Fix Leaflet default marker icons (broken by bundlers)
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
+
+function MapBounds({ churches }) {
+  const map = useMap()
+  useEffect(() => {
+    const pts = churches.filter(c => c.latitude && c.longitude)
+    if (pts.length === 0) return
+    const bounds = L.latLngBounds(pts.map(c => [c.latitude, c.longitude]))
+    map.fitBounds(bounds, { padding: [32, 32], maxZoom: 14 })
+  }, [churches, map])
+  return null
+}
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [city, setCity] = useState(searchParams.get('city') || '')
   const [state, setState] = useState(searchParams.get('state') || '')
   const [churches, setChurches] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState(null)
   const [selectedTags, setSelectedTags] = useState([])
+  const [view, setView] = useState('list') // 'list' | 'map'
+  const offsetRef = useRef(0)
+
+  async function fetchPage(cityVal, stateVal, offset, append = false) {
+    const url = `${API}/api/churches?city=${encodeURIComponent(cityVal)}&state=${encodeURIComponent(stateVal)}&limit=${PAGE}&offset=${offset}`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error('Failed to fetch')
+    const data = await res.json()
+    if (append) {
+      setChurches(prev => [...(prev || []), ...data])
+    } else {
+      setChurches(data)
+    }
+    setHasMore(data.length === PAGE)
+    offsetRef.current = offset + data.length
+    return data
+  }
 
   async function handleSearch(e) {
     if (e) e.preventDefault()
@@ -20,14 +62,24 @@ export default function Search() {
     setSelectedTags([])
     setLoading(true)
     setError(null)
+    offsetRef.current = 0
     try {
-      const res = await fetch(`${API}/api/churches?city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}`)
-      if (!res.ok) throw new Error('Failed to fetch')
-      setChurches(await res.json())
+      await fetchPage(city.trim(), state.trim(), 0)
     } catch (err) {
-      setError(`${err.name}: ${err.message} (fetching ${API}/api/churches)`)
+      setError(`${err.message}`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleLoadMore() {
+    setLoadingMore(true)
+    try {
+      await fetchPage(city.trim(), state.trim(), offsetRef.current, true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -40,9 +92,9 @@ export default function Search() {
       setState(s)
       setLoading(true)
       setError(null)
-      fetch(`${API}/api/churches?city=${encodeURIComponent(c)}&state=${encodeURIComponent(s)}`)
-        .then(r => { if (!r.ok) throw new Error('Failed to fetch'); return r.json() })
-        .then(data => { setChurches(data); setSelectedTags([]) })
+      offsetRef.current = 0
+      fetchPage(c, s, 0)
+        .then(() => setSelectedTags([]))
         .catch(err => setError(err.message))
         .finally(() => setLoading(false))
     }
@@ -53,6 +105,8 @@ export default function Search() {
     ? churches
     : churches?.filter(c => selectedTags.every(t => c.tags?.includes(t)))
 
+  const mappable = (visibleChurches || []).filter(c => c.latitude && c.longitude)
+
   function toggleTag(tag) {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
   }
@@ -60,10 +114,7 @@ export default function Search() {
   function tryDemo() {
     setCity('Brooklyn')
     setState('NY')
-    setTimeout(() => {
-      const form = document.querySelector('form')
-      form?.requestSubmit()
-    }, 0)
+    setTimeout(() => { document.querySelector('form')?.requestSubmit() }, 0)
   }
 
   return (
@@ -94,44 +145,110 @@ export default function Search() {
       </form>
 
       {error && <p className="error-msg">{error}</p>}
-
       {loading && <p className="loading">Finding churches…</p>}
 
-      {!loading && churches !== null && availableTags.length > 0 && (
-        <div className="tag-filter-bar">
-          {availableTags.map(tag => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => toggleTag(tag)}
-              className={`tag-filter-pill${selectedTags.includes(tag) ? ' tag-active' : ''}`}
-            >
-              {tag}
-            </button>
-          ))}
-          {selectedTags.length > 0 && (
-            <button type="button" className="tag-clear" onClick={() => setSelectedTags([])}>
-              Clear filters
-            </button>
-          )}
-        </div>
-      )}
-
       {!loading && churches !== null && (
-        visibleChurches?.length === 0
-          ? (
+        <>
+          {availableTags.length > 0 && (
+            <div className="tag-filter-bar">
+              {availableTags.map(tag => (
+                <button
+                  key={tag} type="button"
+                  onClick={() => toggleTag(tag)}
+                  className={`tag-filter-pill${selectedTags.includes(tag) ? ' tag-active' : ''}`}
+                >
+                  {tag}
+                </button>
+              ))}
+              {selectedTags.length > 0 && (
+                <button type="button" className="tag-clear" onClick={() => setSelectedTags([])}>
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* View toggle — only show when we have results */}
+          {churches.length > 0 && (
+            <div className="view-toggle">
+              <button
+                type="button"
+                className={`view-btn${view === 'list' ? ' view-active' : ''}`}
+                onClick={() => setView('list')}
+              >
+                ☰ List
+              </button>
+              <button
+                type="button"
+                className={`view-btn${view === 'map' ? ' view-active' : ''}`}
+                onClick={() => setView('map')}
+                disabled={mappable.length === 0}
+              >
+                🗺 Map {mappable.length > 0 && `(${mappable.length})`}
+              </button>
+            </div>
+          )}
+
+          {visibleChurches?.length === 0 ? (
             <div className="empty-state">
               {churches.length === 0
                 ? <><p>No churches found in {city}, {state}.</p><p style={{ fontSize: '0.85rem' }}>Try a different city, or be the first to add one!</p></>
                 : <p>No churches match the selected filters.</p>
               }
             </div>
-          )
-          : (
-            <div className="church-grid">
-              {visibleChurches?.map(c => <ChurchCard key={c.id} church={c} />)}
+          ) : view === 'map' ? (
+            <div className="map-container">
+              <MapContainer
+                center={[39.5, -98.35]}
+                zoom={4}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <MapBounds churches={mappable} />
+                {mappable.map(c => (
+                  <Marker key={c.id} position={[c.latitude, c.longitude]}>
+                    <Popup>
+                      <div className="map-popup">
+                        <strong>{c.name}</strong>
+                        {c.denomination && <span className="popup-denom">{c.denomination}</span>}
+                        {c.avg_rating != null && (
+                          <span className="popup-rating">★ {c.avg_rating.toFixed(1)}</span>
+                        )}
+                        <button
+                          className="popup-link"
+                          onClick={() => navigate(`/church/${c.id}`)}
+                        >
+                          View details →
+                        </button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
             </div>
-          )
+          ) : (
+            <>
+              <div className="church-grid">
+                {visibleChurches?.map(c => <ChurchCard key={c.id} church={c} />)}
+              </div>
+              {hasMore && selectedTags.length === 0 && (
+                <div className="load-more-row">
+                  <button
+                    type="button"
+                    className="load-more-btn"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? 'Loading…' : `Load more churches`}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </>
       )}
     </div>
   )

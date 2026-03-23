@@ -14,6 +14,8 @@ _DIM_QUERY = """
         c.state,
         c.denomination,
         c.service_times,
+        c.latitude,
+        c.longitude,
         ROUND(AVG(r.rating), 1)               AS avg_rating,
         COUNT(r.review_id)                    AS review_count,
         AVG(r.worship_energy)                 AS avg_worship_energy,
@@ -44,6 +46,8 @@ def _row_to_church(row, include_dims: bool = False) -> dict:
         "state": row["state"],
         "denomination": row["denomination"],
         "service_times": row["service_times"],
+        "latitude": row["latitude"],
+        "longitude": row["longitude"],
         "avg_rating": row["avg_rating"],
         "review_count": row["review_count"],
         "tags": compute_tags(dims, row["review_count"] or 0),
@@ -58,14 +62,20 @@ def list_churches(
     city: str = "",
     state: str = "",
     zip_code: str = "",
+    limit: int = 50,
+    offset: int = 0,
     db: Database = Depends(get_db),
 ):
     if zip_code:
-        query = _DIM_QUERY + "WHERE c.zip_code = ? GROUP BY c.church_id"
-        rows = db.execute_query(query, (zip_code,))
+        query = _DIM_QUERY + "WHERE c.zip_code = ? GROUP BY c.church_id LIMIT ? OFFSET ?"
+        rows = db.execute_query(query, (zip_code, limit, offset))
     else:
-        query = _DIM_QUERY + "WHERE c.city = ? AND c.state = ? GROUP BY c.church_id"
-        rows = db.execute_query(query, (city, state))
+        query = (
+            _DIM_QUERY
+            + "WHERE LOWER(c.city) = LOWER(?) AND LOWER(c.state) = LOWER(?)"
+            + " GROUP BY c.church_id ORDER BY review_count DESC LIMIT ? OFFSET ?"
+        )
+        rows = db.execute_query(query, (city, state, limit, offset))
     return [_row_to_church(row) for row in rows]
 
 
@@ -78,6 +88,7 @@ def get_similar_churches(church_id: int, db: Database = Depends(get_db)):
         SELECT
             c.church_id AS id, c.name, c.address, c.city, c.state,
             c.denomination, c.service_times,
+            c.latitude, c.longitude,
             ROUND(AVG(r.rating), 1)               AS avg_rating,
             COUNT(r.review_id)                    AS review_count,
             AVG(r.worship_energy)                 AS avg_worship_energy,
