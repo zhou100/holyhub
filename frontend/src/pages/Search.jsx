@@ -37,6 +37,8 @@ export default function Search() {
   const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState(null)
   const [selectedTags, setSelectedTags] = useState([])
+  const [selectedLang, setSelectedLang] = useState(null)
+  const [sortBy, setSortBy] = useState('distance') // 'distance' | 'rating' | 'reviews'
   const [view, setView] = useState('list') // 'list' | 'map'
   const [detectedLocation, setDetectedLocation] = useState(null) // { city, state }
   const [userCoords, setUserCoords] = useState(null) // { lat, lon }
@@ -62,6 +64,7 @@ export default function Search() {
     if (!city.trim() || !state.trim()) return
     setSearchParams({ city: city.trim(), state: state.trim() })
     setSelectedTags([])
+    setSelectedLang(null)
     setDetectedLocation(null)
     setLoading(true)
     setError(null)
@@ -126,10 +129,31 @@ export default function Search() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 3958.8, dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  }
+
   const availableTags = churches ? [...new Set(churches.flatMap(c => c.tags ?? []))] : []
-  const visibleChurches = selectedTags.length === 0
-    ? churches
-    : churches?.filter(c => selectedTags.every(t => c.tags?.includes(t)))
+  const availableLangs = churches
+    ? [...new Set(churches.flatMap(c => [c.language, c.cultural_background]).filter(Boolean))]
+    : []
+
+  const filtered = churches
+    ?.filter(c => selectedTags.length === 0 || selectedTags.every(t => c.tags?.includes(t)))
+    ?.filter(c => !selectedLang || c.language === selectedLang || c.cultural_background === selectedLang)
+
+  const visibleChurches = filtered ? [...filtered].sort((a, b) => {
+    if (sortBy === 'distance' && userCoords?.lat) {
+      const da = (a.latitude && a.longitude) ? haversine(userCoords.lat, userCoords.lon, a.latitude, a.longitude) : 9999
+      const db_ = (b.latitude && b.longitude) ? haversine(userCoords.lat, userCoords.lon, b.latitude, b.longitude) : 9999
+      return da - db_
+    }
+    if (sortBy === 'rating') return (b.avg_rating ?? 0) - (a.avg_rating ?? 0)
+    if (sortBy === 'reviews') return (b.review_count ?? 0) - (a.review_count ?? 0)
+    return 0
+  }) : null
 
   const mappable = (visibleChurches || []).filter(c => c.latitude && c.longitude)
 
@@ -181,8 +205,34 @@ export default function Search() {
 
       {!loading && churches !== null && (
         <>
-          {availableTags.length > 0 && (
+          <div className="sort-bar">
+            <span className="sort-label">Sort:</span>
+            {[
+              { key: 'distance', label: '📍 Nearest', disabled: !userCoords?.lat },
+              { key: 'rating',   label: '★ Rating' },
+              { key: 'reviews',  label: '💬 Reviews' },
+            ].map(({ key, label, disabled }) => (
+              <button
+                key={key} type="button" disabled={disabled}
+                className={`sort-pill${sortBy === key ? ' sort-active' : ''}`}
+                onClick={() => setSortBy(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {(availableTags.length > 0 || availableLangs.length > 0) && (
             <div className="tag-filter-bar">
+              {availableLangs.map(lang => (
+                <button
+                  key={lang} type="button"
+                  onClick={() => setSelectedLang(prev => prev === lang ? null : lang)}
+                  className={`tag-filter-pill tag-filter-lang${selectedLang === lang ? ' tag-active' : ''}`}
+                >
+                  {lang}
+                </button>
+              ))}
               {availableTags.map(tag => (
                 <button
                   key={tag} type="button"
@@ -192,8 +242,8 @@ export default function Search() {
                   {tag}
                 </button>
               ))}
-              {selectedTags.length > 0 && (
-                <button type="button" className="tag-clear" onClick={() => setSelectedTags([])}>
+              {(selectedTags.length > 0 || selectedLang) && (
+                <button type="button" className="tag-clear" onClick={() => { setSelectedTags([]); setSelectedLang(null) }}>
                   Clear filters
                 </button>
               )}
