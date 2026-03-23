@@ -1,7 +1,11 @@
+import json
+import sqlite3
+
 from fastapi import APIRouter, Depends, HTTPException
 from holyhub.database import Database
 from backend.deps import get_db
 from backend.utils import compute_tags
+from backend import enrichment
 
 router = APIRouter()
 
@@ -91,7 +95,7 @@ def get_similar_churches(church_id: int, db: Database = Depends(get_db)):
     query = """
         SELECT
             c.church_id AS id, c.name, c.address, c.city, c.state,
-            c.denomination, c.service_times,
+            c.denomination, c.service_times, c.website, c.phone,
             c.latitude, c.longitude,
             ROUND(AVG(r.rating), 1)               AS avg_rating,
             COUNT(r.review_id)                    AS review_count,
@@ -143,3 +147,28 @@ def get_church(church_id: int, db: Database = Depends(get_db)):
     if not rows:
         raise HTTPException(status_code=404, detail="Church not found")
     return _row_to_church(rows[0], include_dims=True)
+
+
+@router.post("/churches/{church_id}/enrich")
+def enrich_church(church_id: int, db: Database = Depends(get_db)):
+    """Trigger Google Places enrichment for a church. Idempotent and cap-safe."""
+    con = sqlite3.connect(db.db_path)
+    con.row_factory = sqlite3.Row
+    try:
+        result = enrichment.enrich(church_id, con)
+    finally:
+        con.close()
+    if result is None:
+        # Either already enriched with no data, cap reached, or no API key
+        row = db.execute_query(
+            "SELECT google_photos, google_hours FROM Churches WHERE church_id = ?",
+            (church_id,)
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Church not found")
+        r = row[0]
+        return {
+            "photos": json.loads(r["google_photos"]) if r["google_photos"] else [],
+            "hours": json.loads(r["google_hours"]) if r["google_hours"] else [],
+        }
+    return result

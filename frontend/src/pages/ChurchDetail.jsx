@@ -42,6 +42,8 @@ export default function ChurchDetail() {
   const [reviewCount, setReviewCount] = useState(0)
   const [similarChurches, setSimilarChurches] = useState(null)
   const [similarError, setSimilarError] = useState(null)
+  const [enrichData, setEnrichData] = useState(null)
+  const [photoIdx, setPhotoIdx] = useState(0)
 
   async function fetchChurch() {
     try {
@@ -63,6 +65,17 @@ export default function ChurchDetail() {
     }
   }
 
+  async function fetchEnrich() {
+    try {
+      const res = await fetch(`${API}/api/churches/${id}/enrich`, { method: 'POST' })
+      if (!res.ok) return
+      const data = await res.json()
+      if (data.photos?.length || data.hours?.length) setEnrichData(data)
+    } catch {
+      // enrichment is best-effort, never blocks the page
+    }
+  }
+
   async function fetchReviews() {
     try {
       const res = await fetch(`${API}/api/reviews/${id}`)
@@ -77,7 +90,12 @@ export default function ChurchDetail() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.allSettled([fetchChurch(), fetchReviews(), fetchSimilar()]).then(() => setLoading(false))
+    setEnrichData(null)
+    setPhotoIdx(0)
+    Promise.allSettled([fetchChurch(), fetchReviews(), fetchSimilar()]).then(() => {
+      setLoading(false)
+      fetchEnrich()
+    })
   }, [id])
 
   async function handleReviewSubmitted() {
@@ -127,6 +145,10 @@ export default function ChurchDetail() {
               {church.service_times && (
                 <p className="service-times">🕐 {church.service_times}</p>
               )}
+              {enrichData?.editorial && (
+                <p className="church-editorial">{enrichData.editorial}</p>
+              )}
+
               <div className="meta">
                 <Stars rating={church.avg_rating} />
                 <span className="avg-rating">
@@ -136,6 +158,14 @@ export default function ChurchDetail() {
                   (<span className="review-count-badge" key={reviewCount}>{reviewCount}</span>
                   {' '}{reviewCount === 1 ? 'review' : 'reviews'})
                 </span>
+                {enrichData?.rating != null && (
+                  <span className="google-rating">
+                    ⭐ {enrichData.rating} Google ({enrichData.review_count?.toLocaleString()})
+                  </span>
+                )}
+                {enrichData?.wheelchair && (
+                  <span className="tag">♿ Accessible</span>
+                )}
                 {church.tags?.map(t => <span key={t} className="tag">{t}</span>)}
               </div>
 
@@ -163,10 +193,56 @@ export default function ChurchDetail() {
                   )}
                 </div>
               )}
+
+              {enrichData?.hours?.length > 0 && (
+                <div className="opening-hours">
+                  <h3 className="hours-title">Opening hours</h3>
+                  <ul className="hours-list">
+                    {enrichData.hours.map((line, i) => <li key={i}>{line}</li>)}
+                  </ul>
+                </div>
+              )}
             </div>
+
+            {enrichData?.photos?.length > 0 && (
+              <div className="detail-photos">
+                <img
+                  src={enrichData.photos[photoIdx]}
+                  alt={church.name}
+                  className="detail-photo-main"
+                />
+                {enrichData.photos.length > 1 && (
+                  <div className="photo-dots">
+                    {enrichData.photos.map((_, i) => (
+                      <button
+                        key={i}
+                        className={`photo-dot${i === photoIdx ? ' active' : ''}`}
+                        onClick={() => setPhotoIdx(i)}
+                        aria-label={`Photo ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )
       }
+
+      {enrichData?.reviews?.length > 0 && (
+        <>
+          <h2 className="section-title">Google reviews</h2>
+          <div className="google-reviews-list">
+            {enrichData.reviews.map((r, i) => (
+              <div key={i} className="review-card">
+                <div className="review-stars">{'★'.repeat(r.rating || 0)}{'☆'.repeat(5 - (r.rating || 0))}</div>
+                {r.text && <p className="review-comment">{r.text}</p>}
+                <div className="review-date">{r.author}{r.time ? ` · ${r.time}` : ''}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <h2 className="section-title">Dimension ratings</h2>
       {reviewsError

@@ -39,6 +39,7 @@ export default function Search() {
   const [selectedTags, setSelectedTags] = useState([])
   const [view, setView] = useState('list') // 'list' | 'map'
   const [detectedLocation, setDetectedLocation] = useState(null) // { city, state }
+  const [userCoords, setUserCoords] = useState(null) // { lat, lon }
   const offsetRef = useRef(0)
 
   async function fetchPage(cityVal, stateVal, offset, append = false) {
@@ -111,6 +112,9 @@ export default function Search() {
             setCity(detCity)
             setState(detState)
             setDetectedLocation({ city: detCity, state: detState })
+            if (data.latitude && data.longitude) {
+              setUserCoords({ lat: data.latitude, lon: data.longitude })
+            }
             setSearchParams({ city: detCity, state: detState })
             offsetRef.current = 0
             return fetchPage(detCity, detState, 0)
@@ -260,7 +264,9 @@ export default function Search() {
           ) : (
             <>
               <div className="church-grid">
-                {visibleChurches?.map(c => <ChurchCard key={c.id} church={c} />)}
+                {visibleChurches?.map(c => (
+                  <ChurchCard key={c.id} church={c} userLat={userCoords?.lat} userLon={userCoords?.lon} />
+                ))}
               </div>
               {hasMore && selectedTags.length === 0 && (
                 <div className="load-more-row">
