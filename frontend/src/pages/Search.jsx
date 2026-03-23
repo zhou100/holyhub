@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -39,10 +39,11 @@ export default function Search() {
   const [selectedTags, setSelectedTags] = useState([])
   const [selectedLang, setSelectedLang] = useState(null)
   const [sortBy, setSortBy] = useState('distance') // 'distance' | 'rating' | 'reviews'
-  const [view, setView] = useState('list') // 'list' | 'map'
   const [detectedLocation, setDetectedLocation] = useState(null) // { city, state }
   const [userCoords, setUserCoords] = useState(null) // { lat, lon }
+  const [hoveredId, setHoveredId] = useState(null)   // church id currently hovered
   const offsetRef = useRef(0)
+  const cardRefs = useRef({})                         // church_id → DOM node
 
   async function fetchPage(cityVal, stateVal, offset, append = false) {
     const url = `${API}/api/churches?city=${encodeURIComponent(cityVal)}&state=${encodeURIComponent(stateVal)}&limit=${PAGE}&offset=${offset}`
@@ -167,172 +168,192 @@ export default function Search() {
     setTimeout(() => { document.querySelector('form')?.requestSubmit() }, 0)
   }
 
+  function markerIcon(id) {
+    const active = id === hoveredId
+    return L.divIcon({
+      className: '',
+      html: `<div class="map-pin${active ? ' map-pin-active' : ''}"></div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 28],
+      popupAnchor: [0, -28],
+    })
+  }
+
+  function scrollToCard(id) {
+    cardRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    setHoveredId(id)
+  }
+
+  const hasResults = !loading && churches !== null
+
   return (
     <div className="search-page">
-      <header>
-        <h1>⛪ HolyHub</h1>
-        <p>Find your church — rated on what actually matters.</p>
-      </header>
+      <div className="search-top">
+        <header>
+          <h1>⛪ HolyHub</h1>
+          <p>Find your church — rated on what actually matters.</p>
+        </header>
 
-      <form onSubmit={handleSearch}>
-        <div className="search-form">
-          <input
-            value={city} onChange={e => setCity(e.target.value)}
-            placeholder="City" aria-label="City"
-          />
-          <input
-            value={state} onChange={e => setState(e.target.value)}
-            placeholder="State (e.g. NY)" aria-label="State" style={{ maxWidth: 120 }}
-          />
-          <button type="submit" className="search-btn" disabled={loading}>
-            {loading ? 'Searching…' : 'Search'}
-          </button>
-        </div>
-        <div className="demo-hint">
-          Try:{' '}
-          <button type="button" onClick={tryDemo}>Brooklyn, NY →</button>
-        </div>
-      </form>
+        <form onSubmit={handleSearch}>
+          <div className="search-form">
+            <input
+              value={city} onChange={e => setCity(e.target.value)}
+              placeholder="City" aria-label="City"
+            />
+            <input
+              value={state} onChange={e => setState(e.target.value)}
+              placeholder="State (e.g. NY)" aria-label="State" style={{ maxWidth: 120 }}
+            />
+            <button type="submit" className="search-btn" disabled={loading}>
+              {loading ? 'Searching…' : 'Search'}
+            </button>
+          </div>
+          <div className="demo-hint">
+            Try:{' '}
+            <button type="button" onClick={tryDemo}>Brooklyn, NY →</button>
+          </div>
+        </form>
 
-      {detectedLocation && !loading && (
-        <p className="location-detected">
-          📍 Showing churches near <strong>{detectedLocation.city}, {detectedLocation.state}</strong>
-        </p>
-      )}
+        {detectedLocation && !loading && (
+          <p className="location-detected">
+            📍 Showing churches near <strong>{detectedLocation.city}, {detectedLocation.state}</strong>
+          </p>
+        )}
+        {error && <p className="error-msg">{error}</p>}
+        {loading && <p className="loading">Finding churches…</p>}
 
-      {error && <p className="error-msg">{error}</p>}
-      {loading && <p className="loading">Finding churches…</p>}
+        {hasResults && (
+          <>
+            <div className="sort-bar">
+              <span className="sort-label">Sort:</span>
+              {[
+                { key: 'distance', label: '📍 Nearest', disabled: !userCoords?.lat },
+                { key: 'rating',   label: '★ Rating' },
+                { key: 'reviews',  label: '💬 Reviews' },
+              ].map(({ key, label, disabled }) => (
+                <button
+                  key={key} type="button" disabled={disabled}
+                  className={`sort-pill${sortBy === key ? ' sort-active' : ''}`}
+                  onClick={() => setSortBy(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-      {!loading && churches !== null && (
-        <>
-          <div className="sort-bar">
-            <span className="sort-label">Sort:</span>
-            {[
-              { key: 'distance', label: '📍 Nearest', disabled: !userCoords?.lat },
-              { key: 'rating',   label: '★ Rating' },
-              { key: 'reviews',  label: '💬 Reviews' },
-            ].map(({ key, label, disabled }) => (
-              <button
-                key={key} type="button" disabled={disabled}
-                className={`sort-pill${sortBy === key ? ' sort-active' : ''}`}
-                onClick={() => setSortBy(key)}
-              >
-                {label}
-              </button>
-            ))}
+            {(availableTags.length > 0 || availableLangs.length > 0) && (
+              <div className="tag-filter-bar">
+                {availableLangs.map(lang => (
+                  <button
+                    key={lang} type="button"
+                    onClick={() => setSelectedLang(prev => prev === lang ? null : lang)}
+                    className={`tag-filter-pill tag-filter-lang${selectedLang === lang ? ' tag-active' : ''}`}
+                  >
+                    {lang}
+                  </button>
+                ))}
+                {availableTags.map(tag => (
+                  <button
+                    key={tag} type="button"
+                    onClick={() => toggleTag(tag)}
+                    className={`tag-filter-pill${selectedTags.includes(tag) ? ' tag-active' : ''}`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+                {(selectedTags.length > 0 || selectedLang) && (
+                  <button type="button" className="tag-clear" onClick={() => { setSelectedTags([]); setSelectedLang(null) }}>
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {hasResults && (
+        <div className="results-pane">
+          {/* ── List panel ── */}
+          <div className="list-panel">
+            {visibleChurches?.length === 0 ? (
+              <div className="empty-state">
+                {churches.length === 0
+                  ? <><p>No churches found in {city}, {state}.</p><p style={{ fontSize: '0.85rem' }}>Try a different city!</p></>
+                  : <p>No churches match the selected filters.</p>
+                }
+              </div>
+            ) : (
+              <>
+                <div className="church-list">
+                  {visibleChurches?.map(c => (
+                    <div
+                      key={c.id}
+                      ref={el => { cardRefs.current[c.id] = el }}
+                      className={`card-wrapper${hoveredId === c.id ? ' card-wrapper-active' : ''}`}
+                      onMouseEnter={() => setHoveredId(c.id)}
+                      onMouseLeave={() => setHoveredId(null)}
+                    >
+                      <ChurchCard church={c} userLat={userCoords?.lat} userLon={userCoords?.lon} />
+                    </div>
+                  ))}
+                </div>
+                {hasMore && selectedTags.length === 0 && (
+                  <div className="load-more-row">
+                    <button
+                      type="button"
+                      className="load-more-btn"
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? 'Loading…' : 'Load more churches'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
-          {(availableTags.length > 0 || availableLangs.length > 0) && (
-            <div className="tag-filter-bar">
-              {availableLangs.map(lang => (
-                <button
-                  key={lang} type="button"
-                  onClick={() => setSelectedLang(prev => prev === lang ? null : lang)}
-                  className={`tag-filter-pill tag-filter-lang${selectedLang === lang ? ' tag-active' : ''}`}
+          {/* ── Map panel ── */}
+          <div className="map-panel">
+            <MapContainer
+              center={[39.5, -98.35]}
+              zoom={4}
+              style={{ height: '100%', width: '100%' }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <MapBounds churches={mappable} />
+              {mappable.map(c => (
+                <Marker
+                  key={c.id}
+                  position={[c.latitude, c.longitude]}
+                  icon={markerIcon(c.id)}
+                  eventHandlers={{
+                    click: () => scrollToCard(c.id),
+                    mouseover: () => setHoveredId(c.id),
+                    mouseout:  () => setHoveredId(null),
+                  }}
                 >
-                  {lang}
-                </button>
+                  <Popup>
+                    <div className="map-popup">
+                      <strong>{c.name}</strong>
+                      {c.denomination && <span className="popup-denom">{c.denomination}</span>}
+                      {c.avg_rating != null && (
+                        <span className="popup-rating">★ {c.avg_rating.toFixed(1)}</span>
+                      )}
+                      <button className="popup-link" onClick={() => navigate(`/church/${c.id}`)}>
+                        View details →
+                      </button>
+                    </div>
+                  </Popup>
+                </Marker>
               ))}
-              {availableTags.map(tag => (
-                <button
-                  key={tag} type="button"
-                  onClick={() => toggleTag(tag)}
-                  className={`tag-filter-pill${selectedTags.includes(tag) ? ' tag-active' : ''}`}
-                >
-                  {tag}
-                </button>
-              ))}
-              {(selectedTags.length > 0 || selectedLang) && (
-                <button type="button" className="tag-clear" onClick={() => { setSelectedTags([]); setSelectedLang(null) }}>
-                  Clear filters
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* View toggle — only show when we have results */}
-          {churches.length > 0 && (
-            <div className="view-toggle">
-              <button
-                type="button"
-                className={`view-btn${view === 'list' ? ' view-active' : ''}`}
-                onClick={() => setView('list')}
-              >
-                ☰ List
-              </button>
-              <button
-                type="button"
-                className={`view-btn${view === 'map' ? ' view-active' : ''}`}
-                onClick={() => setView('map')}
-                disabled={mappable.length === 0}
-              >
-                🗺 Map {mappable.length > 0 && `(${mappable.length})`}
-              </button>
-            </div>
-          )}
-
-          {visibleChurches?.length === 0 ? (
-            <div className="empty-state">
-              {churches.length === 0
-                ? <><p>No churches found in {city}, {state}.</p><p style={{ fontSize: '0.85rem' }}>Try a different city, or be the first to add one!</p></>
-                : <p>No churches match the selected filters.</p>
-              }
-            </div>
-          ) : view === 'map' ? (
-            <div className="map-container">
-              <MapContainer
-                center={[39.5, -98.35]}
-                zoom={4}
-                style={{ height: '500px', width: '100%' }}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <MapBounds churches={mappable} />
-                {mappable.map(c => (
-                  <Marker key={c.id} position={[c.latitude, c.longitude]}>
-                    <Popup>
-                      <div className="map-popup">
-                        <strong>{c.name}</strong>
-                        {c.denomination && <span className="popup-denom">{c.denomination}</span>}
-                        {c.avg_rating != null && (
-                          <span className="popup-rating">★ {c.avg_rating.toFixed(1)}</span>
-                        )}
-                        <button
-                          className="popup-link"
-                          onClick={() => navigate(`/church/${c.id}`)}
-                        >
-                          View details →
-                        </button>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
-            </div>
-          ) : (
-            <>
-              <div className="church-grid">
-                {visibleChurches?.map(c => (
-                  <ChurchCard key={c.id} church={c} userLat={userCoords?.lat} userLon={userCoords?.lon} />
-                ))}
-              </div>
-              {hasMore && selectedTags.length === 0 && (
-                <div className="load-more-row">
-                  <button
-                    type="button"
-                    className="load-more-btn"
-                    onClick={handleLoadMore}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore ? 'Loading…' : `Load more churches`}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </>
+            </MapContainer>
+          </div>
+        </div>
       )}
     </div>
   )
