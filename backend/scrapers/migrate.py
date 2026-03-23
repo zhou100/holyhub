@@ -25,6 +25,8 @@ def migrate(db_path: str = "holyhub.db") -> None:
         ("google_editorial",      "TEXT"),   # Editorial summary description
         ("google_wheelchair",     "INTEGER"),# 1 = wheelchair accessible
         ("google_address",        "TEXT"),   # Formatted address from Google
+        ("language",              "TEXT"),   # Detected primary service language
+        ("cultural_background",   "TEXT"),   # Detected cultural/ethnic community
     ]
     for col, typedef in new_columns:
         if col not in existing:

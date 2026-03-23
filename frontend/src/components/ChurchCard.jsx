@@ -46,11 +46,15 @@ export default function ChurchCard({ church, userLat, userLon }) {
           </span>
           <Distance church={church} userLat={userLat} userLon={userLon} />
         </div>
-        {church.tags?.length > 0 && (
-          <div className="tag-list">
-            {church.tags.map(t => <span key={t} className="tag">{t}</span>)}
-          </div>
-        )}
+        <div className="tag-list">
+          {church.language && church.language !== 'English' && (
+            <span className="tag tag-lang">{church.language}</span>
+          )}
+          {church.cultural_background && (
+            <span className="tag tag-culture">{church.cultural_background}</span>
+          )}
+          {church.tags?.map(t => <span key={t} className="tag">{t}</span>)}
+        </div>
       </div>
     </Link>
   )
