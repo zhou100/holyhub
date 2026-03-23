@@ -30,3 +30,14 @@ Available skills:
 - `/gstack-upgrade` — upgrade gstack to the latest version
 
 If gstack skills aren't working, run `cd .claude/skills/gstack && ./setup` to build the binary and register skills.
+
+## Design System
+Always read DESIGN.md before making any visual or UI decisions.
+All font choices, colors, spacing, and aesthetic direction are defined there.
+Do not deviate without explicit user approval — especially:
+- Never use purple/violet (#6c63ff) — retired in favor of sienna (#8B5E3C)
+- Church names always use Fraunces serif
+- Wordmark always uses Fraunces serif
+- Stars/ratings use gold (#D4A853)
+- Dimension bars use sienna→gold gradient fill
+In QA mode, flag any code that doesn't match DESIGN.md.
