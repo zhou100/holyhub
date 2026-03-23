@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import ChurchCard from '../components/ChurchCard'
 
-const API = ''
+const API = import.meta.env.VITE_API_URL || ''
 const PAGE = 50
 
 // Fix Leaflet default marker icons (broken by bundlers)

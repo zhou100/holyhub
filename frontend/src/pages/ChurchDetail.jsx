@@ -4,7 +4,7 @@ import DimensionBars from '../components/DimensionBars'
 import ReviewForm from '../components/ReviewForm'
 import ChurchCard from '../components/ChurchCard'
 
-const API = ''
+const API = import.meta.env.VITE_API_URL || ''
 
 function gradient(id) {
   const hue = (id * 37) % 360
