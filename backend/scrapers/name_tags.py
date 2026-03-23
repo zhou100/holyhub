@@ -31,9 +31,10 @@ class Rule:
 
 RULES: list[Rule] = [
     # ── Spanish / Latino ────────────────────────────────────────────────────
+    # "san/santa" alone are too ambiguous (San Mateo, Santa Barbara are US place names)
     Rule(r"iglesia|primera\b|segundo\b|nueva\b|cristo\b|dios\b|señor\b|"
-         r"espiritu\b|sagrada\b|virgen\b|nuestra\b|san\s|santa\s|evangelio\b|"
-         r"hispana|hispanica|latina|latino|española|español",
+         r"espiritu\b|sagrada\b|virgen\b|nuestra\b|evangelio\b|parroquia\b|"
+         r"templo\b|catedral\b|hispana|hispanica|latina|latino|española|español",
          "Spanish", "Hispanic/Latino"),
 
     # ── Korean ───────────────────────────────────────────────────────────────
