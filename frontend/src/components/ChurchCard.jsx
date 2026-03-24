@@ -40,35 +40,54 @@ function Distance({ church, userLat, userLon }) {
   return <span className="card-distance">📍 {label}</span>
 }
 
-export default function ChurchCard({ church, userLat, userLon }) {
-  const accentColor = denomAccentColor(church.denomination)
+function CardBody({ church, userLat, userLon }) {
   return (
-    <Link
-      to={`/church/${church.id}`}
-      className="church-card"
-      style={{ borderLeft: `5px solid ${accentColor}` }}
-    >
-      <div className="card-body">
-        <h3>{church.name}</h3>
-        <p className="card-denom">{church.denomination || 'Church'}</p>
-        <div className="card-meta">
-          <Stars rating={church.avg_rating} />
-          <span className="review-count">
-            {church.avg_rating != null ? church.avg_rating.toFixed(1) : '—'}
-            {' '}({church.review_count} {church.review_count === 1 ? 'review' : 'reviews'})
-          </span>
-          <Distance church={church} userLat={userLat} userLon={userLon} />
-        </div>
-        <div className="tag-list">
-          {church.language && church.language !== 'English' && (
-            <span className="tag tag-lang">{church.language}</span>
-          )}
-          {church.cultural_background && (
-            <span className="tag tag-culture">{church.cultural_background}</span>
-          )}
-          {church.tags?.map(t => <span key={t} className="tag">{t}</span>)}
-        </div>
+    <div className="card-body">
+      <h3>{church.name}</h3>
+      <p className="card-denom">{church.denomination || 'Church'}</p>
+      <div className="card-meta">
+        <Stars rating={church.avg_rating} />
+        <span className="review-count">
+          {church.avg_rating != null ? church.avg_rating.toFixed(1) : '—'}
+          {' '}({church.review_count} {church.review_count === 1 ? 'review' : 'reviews'})
+        </span>
+        <Distance church={church} userLat={userLat} userLon={userLon} />
       </div>
+      <div className="tag-list">
+        {church.language && church.language !== 'English' && (
+          <span className="tag tag-lang">{church.language}</span>
+        )}
+        {church.cultural_background && (
+          <span className="tag tag-culture">{church.cultural_background}</span>
+        )}
+        {church.tags?.map(t => <span key={t} className="tag">{t}</span>)}
+      </div>
+    </div>
+  )
+}
+
+export default function ChurchCard({ church, userLat, userLon, onSelect }) {
+  const accentColor = denomAccentColor(church.denomination)
+  const sharedStyle = { borderLeft: `5px solid ${accentColor}` }
+
+  if (onSelect) {
+    return (
+      <div
+        className="church-card"
+        style={sharedStyle}
+        onClick={() => onSelect(church.id)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && onSelect(church.id)}
+      >
+        <CardBody church={church} userLat={userLat} userLon={userLon} />
+      </div>
+    )
+  }
+
+  return (
+    <Link to={`/church/${church.id}`} className="church-card" style={sharedStyle}>
+      <CardBody church={church} userLat={userLat} userLon={userLon} />
     </Link>
   )
 }

@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import ChurchCard from '../components/ChurchCard'
+import ChurchDetailPanel from '../components/ChurchDetailPanel'
 
 const API = import.meta.env.VITE_API_URL || ''
 const PAGE = 50
@@ -26,9 +27,18 @@ function MapBounds({ churches }) {
   return null
 }
 
+function MapFlyTo({ church }) {
+  const map = useMap()
+  useEffect(() => {
+    if (church?.latitude && church?.longitude) {
+      map.flyTo([church.latitude, church.longitude], 15, { duration: 0.8 })
+    }
+  }, [church, map])
+  return null
+}
+
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
   const [city, setCity] = useState(searchParams.get('city') || '')
   const [state, setState] = useState(searchParams.get('state') || '')
   const [churches, setChurches] = useState(null)
@@ -38,12 +48,13 @@ export default function Search() {
   const [error, setError] = useState(null)
   const [selectedTags, setSelectedTags] = useState([])
   const [selectedLang, setSelectedLang] = useState(null)
-  const [sortBy, setSortBy] = useState('distance') // 'distance' | 'rating' | 'reviews'
-  const [detectedLocation, setDetectedLocation] = useState(null) // { city, state }
-  const [userCoords, setUserCoords] = useState(null) // { lat, lon }
-  const [hoveredId, setHoveredId] = useState(null)   // church id currently hovered
+  const [sortBy, setSortBy] = useState('distance')
+  const [detectedLocation, setDetectedLocation] = useState(null)
+  const [userCoords, setUserCoords] = useState(null)
+  const [hoveredId, setHoveredId] = useState(null)
+  const [selectedChurchId, setSelectedChurchId] = useState(null)
   const offsetRef = useRef(0)
-  const cardRefs = useRef({})                         // church_id → DOM node
+  const cardRefs = useRef({})
 
   async function fetchPage(cityVal, stateVal, offset, append = false) {
     const url = `${API}/api/churches?city=${encodeURIComponent(cityVal)}&state=${encodeURIComponent(stateVal)}&limit=${PAGE}&offset=${offset}`
@@ -67,6 +78,7 @@ export default function Search() {
     setSelectedTags([])
     setSelectedLang(null)
     setDetectedLocation(null)
+    setSelectedChurchId(null)
     setLoading(true)
     setError(null)
     offsetRef.current = 0
@@ -90,7 +102,6 @@ export default function Search() {
     }
   }
 
-  // On mount: restore from URL params OR auto-detect location from IP
   useEffect(() => {
     const c = searchParams.get('city')
     const s = searchParams.get('state')
@@ -105,7 +116,6 @@ export default function Search() {
         .catch(err => setError(err.message))
         .finally(() => setLoading(false))
     } else {
-      // Auto-detect from IP
       setLoading(true)
       fetch('https://ipapi.co/json/')
         .then(r => r.json())
@@ -125,7 +135,7 @@ export default function Search() {
               .then(() => setSelectedTags([]))
           }
         })
-        .catch(() => {}) // fail silently — user can search manually
+        .catch(() => {})
         .finally(() => setLoading(false))
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -157,6 +167,9 @@ export default function Search() {
   }) : null
 
   const mappable = (visibleChurches || []).filter(c => c.latitude && c.longitude)
+  const selectedChurch = selectedChurchId
+    ? (visibleChurches || []).find(c => c.id === selectedChurchId) ?? null
+    : null
 
   function toggleTag(tag) {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
@@ -169,7 +182,7 @@ export default function Search() {
   }
 
   function markerIcon(id) {
-    const active = id === hoveredId
+    const active = id === hoveredId || id === selectedChurchId
     return L.divIcon({
       className: '',
       html: `<div class="map-pin${active ? ' map-pin-active' : ''}"></div>`,
@@ -181,6 +194,11 @@ export default function Search() {
 
   function scrollToCard(id) {
     cardRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    setHoveredId(id)
+  }
+
+  function handleSelectChurch(id) {
+    setSelectedChurchId(id)
     setHoveredId(id)
   }
 
@@ -222,7 +240,7 @@ export default function Search() {
         {error && <p className="error-msg">{error}</p>}
         {loading && <p className="loading">Finding churches…</p>}
 
-        {hasResults && (
+        {hasResults && !selectedChurchId && (
           <>
             <div className="sort-bar">
               <span className="sort-label">Sort:</span>
@@ -274,9 +292,15 @@ export default function Search() {
 
       {hasResults && (
         <div className="results-pane">
-          {/* ── List panel ── */}
+          {/* ── List / Detail panel ── */}
           <div className="list-panel">
-            {visibleChurches?.length === 0 ? (
+            {selectedChurchId ? (
+              <ChurchDetailPanel
+                churchId={selectedChurchId}
+                onBack={() => { setSelectedChurchId(null); setHoveredId(null) }}
+                onSelect={handleSelectChurch}
+              />
+            ) : visibleChurches?.length === 0 ? (
               <div className="empty-state">
                 {churches.length === 0
                   ? <><p>No churches found in {city}, {state}.</p><p style={{ fontSize: '0.85rem' }}>Try a different city!</p></>
@@ -294,7 +318,12 @@ export default function Search() {
                       onMouseEnter={() => setHoveredId(c.id)}
                       onMouseLeave={() => setHoveredId(null)}
                     >
-                      <ChurchCard church={c} userLat={userCoords?.lat} userLon={userCoords?.lon} />
+                      <ChurchCard
+                        church={c}
+                        userLat={userCoords?.lat}
+                        userLon={userCoords?.lon}
+                        onSelect={handleSelectChurch}
+                      />
                     </div>
                   ))}
                 </div>
@@ -325,14 +354,15 @@ export default function Search() {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              <MapBounds churches={mappable} />
+              {!selectedChurch && <MapBounds churches={mappable} />}
+              {selectedChurch && <MapFlyTo church={selectedChurch} />}
               {mappable.map(c => (
                 <Marker
                   key={c.id}
                   position={[c.latitude, c.longitude]}
                   icon={markerIcon(c.id)}
                   eventHandlers={{
-                    click: () => scrollToCard(c.id),
+                    click: () => handleSelectChurch(c.id),
                     mouseover: () => setHoveredId(c.id),
                     mouseout:  () => setHoveredId(null),
                   }}
@@ -344,7 +374,7 @@ export default function Search() {
                       {c.avg_rating != null && (
                         <span className="popup-rating">★ {c.avg_rating.toFixed(1)}</span>
                       )}
-                      <button className="popup-link" onClick={() => navigate(`/church/${c.id}`)}>
+                      <button className="popup-link" onClick={() => handleSelectChurch(c.id)}>
                         View details →
                       </button>
                     </div>

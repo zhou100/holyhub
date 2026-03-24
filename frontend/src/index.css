@@ -593,6 +593,30 @@ button:focus-visible { outline: 2px solid var(--sienna); outline-offset: 2px; }
   color: var(--text-2);
 }
 
+/* ── Inline detail panel (Google Maps style) ── */
+.detail-panel {
+  padding-bottom: 2rem;
+}
+.detail-panel .detail-header h1 {
+  font-size: 1.2rem;
+}
+.panel-map {
+  margin: 0 -1rem;
+  overflow: hidden;
+}
+.panel-map .leaflet-container { height: 180px !important; }
+.similar-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.similar-panel-list .church-card {
+  display: flex;
+  flex-direction: row;
+  border-radius: 6px;
+}
+
 /* ── Similar churches ────────────────────── */
 .similar-churches-grid {
   display: grid;
