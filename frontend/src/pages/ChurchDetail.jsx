@@ -7,11 +7,6 @@ import ChurchCard from '../components/ChurchCard'
 
 const API = import.meta.env.VITE_API_URL || ''
 
-function gradient(id) {
-  const hue = (id * 37) % 360
-  return `linear-gradient(135deg, hsl(${hue},60%,45%), hsl(${(hue + 40) % 360},50%,35%))`
-}
-
 function Stars({ rating }) {
   if (rating == null) return <span className="stars">—</span>
   const full = Math.round(rating)
@@ -112,7 +107,7 @@ export default function ChurchDetail() {
         ? <p className="error-msg">{churchError}</p>
         : church && (
           <>
-            {church.latitude && church.longitude ? (
+            {church.latitude && church.longitude && (
               <div className="detail-map">
                 <MapContainer
                   center={[church.latitude, church.longitude]}
@@ -130,8 +125,6 @@ export default function ChurchDetail() {
                   <Marker position={[church.latitude, church.longitude]} />
                 </MapContainer>
               </div>
-            ) : (
-              <div className="detail-hero" style={{ background: gradient(church.id) }}>⛪</div>
             )}
 
             <div className="detail-header">

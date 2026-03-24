@@ -1,8 +1,19 @@
 import { Link } from 'react-router-dom'
 
-function gradient(id) {
-  const hue = (id * 37) % 360
-  return `linear-gradient(135deg, hsl(${hue},60%,45%), hsl(${(hue + 40) % 360},50%,35%))`
+const DENOM_COLORS = {
+  baptist:     '#7C3AED',
+  catholic:    '#1D4ED8',
+  episcopal:   '#B45309',
+  anglican:    '#B45309',
+  methodist:   '#0891B2',
+}
+
+function denomAccentColor(denomination) {
+  const d = (denomination || '').toLowerCase()
+  for (const [key, color] of Object.entries(DENOM_COLORS)) {
+    if (d.includes(key)) return color
+  }
+  return '#8B5E3C' // sienna default
 }
 
 function Stars({ rating }) {
@@ -30,11 +41,13 @@ function Distance({ church, userLat, userLon }) {
 }
 
 export default function ChurchCard({ church, userLat, userLon }) {
+  const accentColor = denomAccentColor(church.denomination)
   return (
-    <Link to={`/church/${church.id}`} className="church-card">
-      <div className="card-photo" style={{ background: gradient(church.id) }}>
-        ⛪
-      </div>
+    <Link
+      to={`/church/${church.id}`}
+      className="church-card"
+      style={{ borderLeft: `5px solid ${accentColor}` }}
+    >
       <div className="card-body">
         <h3>{church.name}</h3>
         <p className="card-denom">{church.denomination || 'Church'}</p>

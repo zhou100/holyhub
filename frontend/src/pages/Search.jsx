@@ -190,7 +190,7 @@ export default function Search() {
     <div className="search-page">
       <div className="search-top">
         <header>
-          <h1>⛪ HolyHub</h1>
+          <h1>HolyHub</h1>
           <p>Find your church — rated on what actually matters.</p>
         </header>
 
