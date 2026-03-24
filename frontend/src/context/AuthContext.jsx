@@ -10,8 +10,8 @@ export function AuthProvider({ children }) {
 
   // Restore session from localStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem('holyhub_user')
-    const storedToken = localStorage.getItem('holyhub_token')
+    const storedUser = localStorage.getItem('churchmap_user')
+    const storedToken = localStorage.getItem('churchmap_token')
     if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser))
       setToken(storedToken)
@@ -29,8 +29,8 @@ export function AuthProvider({ children }) {
       const userData = await res.json()
       setUser(userData)
       setToken(credential)
-      localStorage.setItem('holyhub_user', JSON.stringify(userData))
-      localStorage.setItem('holyhub_token', credential)
+      localStorage.setItem('churchmap_user', JSON.stringify(userData))
+      localStorage.setItem('churchmap_token', credential)
     } catch (e) {
       console.error('Sign-in error:', e)
     }
@@ -39,8 +39,8 @@ export function AuthProvider({ children }) {
   function logout() {
     setUser(null)
     setToken(null)
-    localStorage.removeItem('holyhub_user')
-    localStorage.removeItem('holyhub_token')
+    localStorage.removeItem('churchmap_user')
+    localStorage.removeItem('churchmap_token')
     window.google?.accounts.id.disableAutoSelect()
   }
 

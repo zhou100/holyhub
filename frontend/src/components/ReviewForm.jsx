@@ -17,26 +17,44 @@ function GoogleSignInButton({ onCredential }) {
   const btnRef = useRef(null)
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !window.google) return
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: (res) => onCredential(res.credential),
-    })
-    window.google.accounts.id.renderButton(btnRef.current, {
-      type: 'standard',
-      theme: 'outline',
-      size: 'large',
-      text: 'signin_with',
-      shape: 'rectangular',
-      logo_alignment: 'left',
-    })
+    if (!GOOGLE_CLIENT_ID) return
+
+    function init() {
+      if (!window.google || !btnRef.current) return
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (res) => onCredential(res.credential),
+      })
+      window.google.accounts.id.renderButton(btnRef.current, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'rectangular',
+        logo_alignment: 'left',
+      })
+    }
+
+    if (window.google) {
+      init()
+    } else {
+      // GSI script is async — poll until loaded
+      const iv = setInterval(() => {
+        if (window.google) { clearInterval(iv); init() }
+      }, 100)
+      return () => clearInterval(iv)
+    }
   }, [onCredential])
 
   if (!GOOGLE_CLIENT_ID) {
-    return <p className="submit-error">Google Sign-In is not configured.</p>
+    return (
+      <p style={{ fontSize: '0.82rem', color: 'var(--text-3)' }}>
+        Sign-in unavailable — VITE_GOOGLE_CLIENT_ID not configured.
+      </p>
+    )
   }
 
-  return <div ref={btnRef} />
+  return <div ref={btnRef} style={{ minHeight: 44 }} />
 }
 
 export default function ReviewForm({ churchId, onSubmitted }) {
