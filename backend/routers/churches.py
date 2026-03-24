@@ -100,6 +100,7 @@ def get_similar_churches(church_id: int, db: Database = Depends(get_db)):
         SELECT
             c.church_id AS id, c.name, c.address, c.city, c.state,
             c.denomination, c.service_times, c.website, c.phone,
+            c.language, c.cultural_background,
             c.latitude, c.longitude,
             ROUND(AVG(r.rating), 1)               AS avg_rating,
             COUNT(r.review_id)                    AS review_count,

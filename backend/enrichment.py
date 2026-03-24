@@ -16,7 +16,7 @@ import requests
 
 log = logging.getLogger(__name__)
 
-MONTHLY_CAP = 3_000          # stays well within $200 free tier
+MONTHLY_CAP = 10_800         # ~5,400 churches × $0.037 ≈ $200 free tier limit
 PHOTOS_PER_CHURCH = 3
 PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_KEY", "")
 
