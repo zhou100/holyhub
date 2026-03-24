@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend import deps
-from backend.routers import churches, reviews
+from backend.routers import churches, reviews, auth
 
 app = FastAPI(title="HolyHub API")
 
@@ -14,6 +14,7 @@ app.add_middleware(
 
 app.include_router(churches.router, prefix="/api")
 app.include_router(reviews.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 
 
 @app.on_event("startup")

@@ -42,6 +42,32 @@ def migrate(db_path: str = "holyhub.db") -> None:
         ("idx_churches_enriched", "CREATE INDEX IF NOT EXISTS idx_churches_enriched ON Churches(google_enriched_at)"),
     ]
 
+    # Users table for Google Sign-In
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS Users (
+            user_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+            google_id  TEXT UNIQUE NOT NULL,
+            email      TEXT,
+            name       TEXT,
+            avatar_url TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    print("  ensured: Users table")
+
+    # Add reviewer columns to Reviews
+    reviews_existing = {row[1] for row in cur.execute("PRAGMA table_info(Reviews)")}
+    for col, typedef in [
+        ("user_id",         "INTEGER REFERENCES Users(user_id)"),
+        ("reviewer_name",   "TEXT"),
+        ("reviewer_avatar", "TEXT"),
+    ]:
+        if col not in reviews_existing:
+            cur.execute(f"ALTER TABLE Reviews ADD COLUMN {col} {typedef}")
+            print(f"  added Reviews column: {col}")
+        else:
+            print(f"  already exists: Reviews.{col}")
+
     # api_usage table for monthly cap tracking
     cur.execute("""
         CREATE TABLE IF NOT EXISTS api_usage (

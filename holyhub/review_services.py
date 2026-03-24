@@ -12,7 +12,7 @@ class ReviewServices:
             SELECT review_id, church_id, rating, comment,
                    worship_energy, community_warmth, sermon_depth,
                    childrens_programs, theological_openness, facilities,
-                   created_at
+                   created_at, reviewer_name, reviewer_avatar
             FROM Reviews
             WHERE church_id = ?
             ORDER BY created_at DESC
@@ -31,6 +31,8 @@ class ReviewServices:
                     "theological_openness": row["theological_openness"],
                     "facilities": row["facilities"],
                     "created_at": row["created_at"],
+                    "reviewer_name": row["reviewer_name"],
+                    "reviewer_avatar": row["reviewer_avatar"],
                 }
                 for row in rows
             ]

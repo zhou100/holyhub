@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import StarInput from './StarInput'
+import { useAuth, GOOGLE_CLIENT_ID } from '../context/AuthContext'
 
-const API = ''
+const API = import.meta.env.VITE_API_URL || ''
 
 const DIM_FIELDS = [
   { key: 'worship_energy',       label: 'Worship energy' },
@@ -12,7 +13,34 @@ const DIM_FIELDS = [
   { key: 'facilities',           label: 'Facilities' },
 ]
 
+function GoogleSignInButton({ onCredential }) {
+  const btnRef = useRef(null)
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !window.google) return
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: (res) => onCredential(res.credential),
+    })
+    window.google.accounts.id.renderButton(btnRef.current, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'signin_with',
+      shape: 'rectangular',
+      logo_alignment: 'left',
+    })
+  }, [onCredential])
+
+  if (!GOOGLE_CLIENT_ID) {
+    return <p className="submit-error">Google Sign-In is not configured.</p>
+  }
+
+  return <div ref={btnRef} />
+}
+
 export default function ReviewForm({ churchId, onSubmitted }) {
+  const { user, token, handleGoogleCredential, logout } = useAuth()
   const [rating, setRating] = useState(null)
   const [comment, setComment] = useState('')
   const [dims, setDims] = useState({})
@@ -27,12 +55,16 @@ export default function ReviewForm({ churchId, onSubmitted }) {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!rating) { setError('Please select an overall rating.'); return }
+    if (!token) { setError('Please sign in first.'); return }
     setSubmitting(true)
     setError(null)
     try {
       const res = await fetch(`${API}/api/reviews`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
           church_id: churchId,
           rating,
@@ -59,22 +91,34 @@ export default function ReviewForm({ churchId, onSubmitted }) {
   if (success) {
     return (
       <div className="review-form">
-        <p className="submit-success">✓ Review submitted! The dimension bars have been updated.</p>
-        <button
-          type="button"
-          className="submit-btn"
-          onClick={() => setSuccess(false)}
-          style={{ marginTop: '0.5rem' }}
-        >
+        <p className="submit-success">✓ Review submitted! Thank you, {user?.name}.</p>
+        <button type="button" className="submit-btn" onClick={() => setSuccess(false)} style={{ marginTop: '0.5rem' }}>
           Write another review
         </button>
       </div>
     )
   }
 
+  // Not signed in — show sign-in gate
+  if (!user) {
+    return (
+      <div className="review-form review-signin-gate">
+        <p className="signin-prompt">Sign in to share your experience with this church.</p>
+        <GoogleSignInButton onCredential={handleGoogleCredential} />
+      </div>
+    )
+  }
+
+  // Signed in — show form
   return (
     <form className="review-form" onSubmit={handleSubmit}>
-      <h3>Share your experience</h3>
+      <div className="reviewer-bar">
+        {user.avatar_url && (
+          <img src={user.avatar_url} alt={user.name} className="reviewer-avatar" referrerPolicy="no-referrer" />
+        )}
+        <span className="reviewer-name">Reviewing as <strong>{user.name}</strong></span>
+        <button type="button" className="signout-btn" onClick={logout}>Sign out</button>
+      </div>
 
       <div className="form-row">
         <label>Overall rating <span style={{ color: '#e53e3e' }}>*</span></label>
